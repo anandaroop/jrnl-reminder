@@ -9,26 +9,30 @@ const pathToJrnl = process.env.PATH_TO_JRNL || "/usr/local/bin/jrnl"
 const jrnl = (...args) => execa(pathToJrnl, args);
 
 (async () => {
-  const desiredFrequency = "30 minutes"
-  const recentEntries = (await jrnl("-from", `${desiredFrequency} ago`, "--export", "json")).stdout;
-  const { entries } = JSON.parse(recentEntries);
+  try {
+    const desiredFrequency = "30 minutes"
+    const recentEntries = (await jrnl("-from", `${desiredFrequency} ago`, "--export", "json")).stdout;
+    const { entries } = JSON.parse(recentEntries);
 
-  if (entries.length > 0) {
-    console.log(`Has entries from last ${desiredFrequency}`);
-    return;
+    if (entries.length > 0) {
+      console.log(`Has entries from last ${desiredFrequency}`);
+      return;
+    }
+
+    nc.notify({
+      title: "Journal reminder",
+      message: "You haven't added a jrnl entry in a while. What are you working on?",
+      closeLabel: "Not now",
+      reply: true,
+      wait: true,
+      timeout: 5
+    });
+
+    nc.on("replied", (obj, options, metadata) => {
+      const message = metadata.activationValue;
+      jrnl(message);
+    });
+  } catch (e) {
+    console.error(e)
   }
-
-  nc.notify({
-    title: "Journal reminder",
-    message: "You haven't added a jrnl entry in a while. What are you working on?",
-    closeLabel: "Not now",
-    reply: true,
-    wait: true,
-    timeout: 5
-  });
-
-  nc.on("replied", (obj, options, metadata) => {
-    const message = metadata.activationValue;
-    jrnl(message);
-  });
 })();
